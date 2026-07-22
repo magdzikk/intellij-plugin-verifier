@@ -19,7 +19,7 @@ Releases prior to January 2023 are tracked on the project GitHub [Releases Page]
 
 - Close `ZipFile` handles eagerly in `ZipFileHandler` to release archive files after use to restore compatibility with Windows ([#1521](https://github.com/JetBrains/intellij-plugin-verifier/pull/1521), [#1549](https://github.com/JetBrains/intellij-plugin-verifier/pull/1549))
 - Do not attribute internal, experimental, and `OverrideOnly` API usages inlined from Kotlin `inline fun`s declared outside the plugin to the plugin ([MP-7133](https://youtrack.jetbrains.com/issue/MP-7133))
-- Do not report illegal private field access when a `private inline fun` is inlined into another class of the same plugin and accesses a private field of its own declaring class ([MP-4829](https://youtrack.jetbrains.com/issue/MP-4829))
+- Do not report illegal private field or method access when a `private inline fun` is inlined into another class of the same plugin and accesses a private member of its own declaring class ([MP-4829](https://youtrack.jetbrains.com/issue/MP-4829))
 
 ## 1.408 - 2026-07-02
 

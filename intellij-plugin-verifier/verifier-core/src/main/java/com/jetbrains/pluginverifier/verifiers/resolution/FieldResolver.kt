@@ -33,7 +33,7 @@ class FieldResolver {
         null
       }
       is FieldResolutionResult.Found -> {
-        checkFieldIsAccessible(resolutionResult.field, fieldReference, callerMethod, instruction, instructionNode, context)
+        checkFieldIsAccessible(resolutionResult.field, fieldReference, callerMethod, instruction, context, instructionNode)
         resolutionResult.field
       }
     }
@@ -112,8 +112,8 @@ class FieldResolver {
     fieldReference: FieldReference,
     callerMethod: Method,
     instruction: Instruction,
-    instructionNode: AbstractInsnNode,
-    context: VerificationContext
+    context: VerificationContext,
+    instructionNode: AbstractInsnNode
   ) {
     val accessProblem = detectAccessProblem(field, callerMethod, context, instructionNode)
     if (accessProblem != null) {
