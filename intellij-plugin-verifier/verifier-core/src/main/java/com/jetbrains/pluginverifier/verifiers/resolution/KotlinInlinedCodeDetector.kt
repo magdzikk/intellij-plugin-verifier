@@ -2,12 +2,9 @@
  * Copyright 2000-2026 JetBrains s.r.o. and other contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
  */
 
-package com.jetbrains.pluginverifier.usages.util
+package com.jetbrains.pluginverifier.verifiers.resolution
 
 import com.jetbrains.pluginverifier.verifiers.VerificationContext
-import com.jetbrains.pluginverifier.verifiers.resolution.ClassFileAsm
-import com.jetbrains.pluginverifier.verifiers.resolution.Method
-import com.jetbrains.pluginverifier.verifiers.resolution.resolveClassOrNull
 import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.LineNumberNode
 import java.util.Optional
@@ -16,10 +13,10 @@ import java.util.concurrent.ConcurrentHashMap
 private const val SOURCE_DEBUG_EXTENSION_ANNOTATION = "Lkotlin/jvm/internal/SourceDebugExtension;"
 
 /**
- * Detects bytecode instructions that the Kotlin compiler copied into a plugin's class file
- * by inlining an `inline fun` declared outside the plugin ([MP-7133](https://youtrack.jetbrains.com/issue/MP-7133)).
- * API usages carried by such instructions must not be attributed to the plugin:
- * its author only ever called the public function.
+ * Detects bytecode instructions that the Kotlin compiler copied into a class file by inlining an
+ * `inline fun` ([MP-7133](https://youtrack.jetbrains.com/issue/MP-7133)). Usages carried by such
+ * instructions were not written by the author of the containing class: they were copied in from
+ * wherever the inline function was declared, and must be attributed to that origin instead.
  *
  * Detection relies on the SMAP (JSR-45 source map) that the Kotlin compiler emits for every
  * class containing inlined code, mapping each output line to the class it was inlined from.
@@ -31,24 +28,24 @@ class KotlinInlinedCodeDetector {
   private val smapCache = ConcurrentHashMap<String, Optional<Smap>>()
 
   /**
-   * Returns `true` if [instructionNode] of [callerMethod] was inlined from an `inline fun`
-   * declared outside the verified plugin; `false` whenever this cannot be established reliably
-   * (no line numbers, no SMAP, unresolvable origin, or the plugin's own inline function).
+   * Resolves the class [instructionNode] of [callerMethod] was inlined from, regardless of
+   * whether that class belongs to the verified plugin. Returns `null` when the instruction was
+   * not inlined or this cannot be established reliably (no line number, no SMAP, unresolvable
+   * origin class).
    */
-  fun isInlinedFromOutsidePlugin(
+  fun resolveInlineOrigin(
     instructionNode: AbstractInsnNode,
     callerMethod: Method,
     context: VerificationContext
-  ): Boolean {
-    val callerClass = callerMethod.containingClassFile as? ClassFileAsm ?: return false
-    val line = findLineNumber(instructionNode) ?: return false
+  ): ClassFile? {
+    val callerClass = callerMethod.containingClassFile as? ClassFileAsm ?: return null
+    val line = findLineNumber(instructionNode) ?: return null
     val smap = smapCache.computeIfAbsent(callerClass.name) {
       Optional.ofNullable(Smap.parse(callerClass.sourceDebugInfo()))
-    }.orElse(null) ?: return false
-    val originClassName = smap.sourceClassOf(line) ?: return false
-    if (originClassName == callerClass.name) return false
-    val originClass = context.classResolver.resolveClassOrNull(originClassName) ?: return false
-    return !context.isFromVerifiedPlugin(originClass)
+    }.orElse(null) ?: return null
+    val originClassName = smap.sourceClassOf(line) ?: return null
+    if (originClassName == callerClass.name) return null
+    return context.classResolver.resolveClassOrNull(originClassName)
   }
 
   private fun findLineNumber(instructionNode: AbstractInsnNode): Int? {

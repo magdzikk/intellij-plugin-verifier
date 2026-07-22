@@ -7,6 +7,7 @@ package com.jetbrains.pluginverifier.verifiers.resolution
 import com.jetbrains.pluginverifier.results.access.AccessType
 import com.jetbrains.pluginverifier.verifiers.VerificationContext
 import com.jetbrains.pluginverifier.verifiers.isSubclassOf
+import org.objectweb.asm.tree.AbstractInsnNode
 
 fun isClassAccessibleToOtherClass(me: ClassFile, other: ClassFile): Boolean =
   me.isPublic
@@ -22,13 +23,24 @@ fun isClassAccessibleToOtherClass(me: ClassFile, other: ClassFile): Boolean =
 private fun isKotlinDefaultConstructorMarker(classFile: ClassFile): Boolean =
   classFile.name == "kotlin/jvm/internal/DefaultConstructorMarker"
 
-fun detectAccessProblem(callee: ClassFileMember, caller: ClassFileMember, context: VerificationContext): AccessType? {
+fun detectAccessProblem(
+  callee: ClassFileMember,
+  caller: ClassFileMember,
+  context: VerificationContext,
+  instructionNode: AbstractInsnNode? = null
+): AccessType? {
   when {
     callee.isPrivate -> {
       if (callee is Method || callee is Field) {
         val callerClass = if (caller is ClassFile) caller else caller.containingClassFile
         val calleeClass = callee.containingClassFile
-        return if (doClassesBelongToTheSameNestHost(callerClass, calleeClass, context)) {
+        if (doClassesBelongToTheSameNestHost(callerClass, calleeClass, context)) {
+          return null
+        }
+        val inlineOriginClass = resolveInlineOriginClass(caller, instructionNode, context)
+        return if (inlineOriginClass != null && doClassesBelongToTheSameNestHost(inlineOriginClass, calleeClass, context)) {
+          // The access instruction was copied here by the Kotlin compiler when inlining a private
+          // inline fun declared in calleeClass itself; the true accessor is calleeClass, not caller.
           null
         } else {
           AccessType.PRIVATE
@@ -50,6 +62,22 @@ fun detectAccessProblem(callee: ClassFileMember, caller: ClassFileMember, contex
       }
   }
   return null
+}
+
+/**
+ * Resolves the class [instructionNode] was inlined from, if [caller] is a [Method] and this can
+ * be established via the SMAP ([MP-4829](https://youtrack.jetbrains.com/issue/MP-4829)): a
+ * `private inline fun`'s own field/method access, once inlined into another class, must still be
+ * checked for accessibility against the class where it was actually declared.
+ */
+private fun resolveInlineOriginClass(
+  caller: ClassFileMember,
+  instructionNode: AbstractInsnNode?,
+  context: VerificationContext
+): ClassFile? {
+  val callerMethod = caller as? Method ?: return null
+  instructionNode ?: return null
+  return KotlinInlinedCodeDetector().resolveInlineOrigin(instructionNode, callerMethod, context)
 }
 
 private fun getClassNestHost(classFile: ClassFile, context: VerificationContext): ClassFile? {

@@ -100,7 +100,7 @@ class MemberAccessVerifier : InstructionVerifier {
 
         Instruction.GET_STATIC, Instruction.PUT_STATIC, Instruction.PUT_FIELD, Instruction.GET_FIELD -> {
           val fieldReference = FieldReference(memberOwner, memberName, memberDesc)
-          FieldAccessInstructionVerifier(callerMethod, ownerClassFile, fieldReference, context, instruction).verify()
+          FieldAccessInstructionVerifier(callerMethod, ownerClassFile, fieldReference, context, instruction, instructionNode).verify()
         }
       }
     }
