@@ -2,12 +2,9 @@
  * Copyright 2000-2026 JetBrains s.r.o. and other contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
  */
 
-package com.jetbrains.pluginverifier.usages.util
+package com.jetbrains.pluginverifier.verifiers.resolution
 
 import com.jetbrains.pluginverifier.verifiers.VerificationContext
-import com.jetbrains.pluginverifier.verifiers.resolution.ClassFileAsm
-import com.jetbrains.pluginverifier.verifiers.resolution.Method
-import com.jetbrains.pluginverifier.verifiers.resolution.resolveClassOrNull
 import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.LineNumberNode
 import java.util.Optional
@@ -18,20 +15,19 @@ private const val SOURCE_DEBUG_EXTENSION_ANNOTATION = "Lkotlin/jvm/internal/Sour
 class KotlinInlinedCodeDetector {
   private val smapCache = ConcurrentHashMap<String, Optional<Smap>>()
 
-  fun isInlinedFromOutsidePlugin(
+  fun resolveInlineOrigin(
     instructionNode: AbstractInsnNode,
     callerMethod: Method,
     context: VerificationContext
-  ): Boolean {
-    val callerClass = callerMethod.containingClassFile as? ClassFileAsm ?: return false
-    val line = findLineNumber(instructionNode) ?: return false
+  ): ClassFile? {
+    val callerClass = callerMethod.containingClassFile as? ClassFileAsm ?: return null
+    val line = findLineNumber(instructionNode) ?: return null
     val smap = smapCache.computeIfAbsent(callerClass.name) {
       Optional.ofNullable(Smap.parse(callerClass.sourceDebugInfo()))
-    }.orElse(null) ?: return false
-    val originClassName = smap.sourceClassOf(line) ?: return false
-    if (originClassName == callerClass.name) return false
-    val originClass = context.classResolver.resolveClassOrNull(originClassName) ?: return false
-    return !context.isFromVerifiedPlugin(originClass)
+    }.orElse(null) ?: return null
+    val originClassName = smap.sourceClassOf(line) ?: return null
+    if (originClassName == callerClass.name) return null
+    return context.classResolver.resolveClassOrNull(originClassName)
   }
 
   private fun findLineNumber(instructionNode: AbstractInsnNode): Int? {

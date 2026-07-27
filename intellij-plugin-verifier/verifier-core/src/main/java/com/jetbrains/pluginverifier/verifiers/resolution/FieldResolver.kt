@@ -10,6 +10,7 @@ import com.jetbrains.pluginverifier.results.problems.IllegalFieldAccessProblem
 import com.jetbrains.pluginverifier.results.reference.FieldReference
 import com.jetbrains.pluginverifier.verifiers.VerificationContext
 import com.jetbrains.pluginverifier.verifiers.hierarchy.ClassHierarchyBuilder
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * Utility class that implements fields resolution strategy,
@@ -22,7 +23,8 @@ class FieldResolver {
     fieldReference: FieldReference,
     context: VerificationContext,
     callerMethod: Method,
-    instruction: Instruction
+    instruction: Instruction,
+    instructionNode: AbstractInsnNode
   ): Field? =
     when (val resolutionResult = doResolveField(classFile, fieldReference, context)) {
       FieldResolutionResult.Abort -> null
@@ -31,7 +33,7 @@ class FieldResolver {
         null
       }
       is FieldResolutionResult.Found -> {
-        checkFieldIsAccessible(resolutionResult.field, fieldReference, callerMethod, instruction, context)
+        checkFieldIsAccessible(resolutionResult.field, fieldReference, callerMethod, instruction, context, instructionNode)
         resolutionResult.field
       }
     }
@@ -110,9 +112,10 @@ class FieldResolver {
     fieldReference: FieldReference,
     callerMethod: Method,
     instruction: Instruction,
-    context: VerificationContext
+    context: VerificationContext,
+    instructionNode: AbstractInsnNode
   ) {
-    val accessProblem = detectAccessProblem(field, callerMethod, context)
+    val accessProblem = detectAccessProblem(field, callerMethod, context, instructionNode)
     if (accessProblem != null) {
       context.problemRegistrar.registerProblem(
         IllegalFieldAccessProblem(

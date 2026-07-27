@@ -194,7 +194,7 @@ class MethodInvokeInstructionVerifier(
   }
 
   private fun resolveMethod(): Method? {
-    val method = MethodResolver().resolveMethod(methodOwnerClass, methodReference, instruction, callerMethod, context)
+    val method = MethodResolver().resolveMethod(methodOwnerClass, methodReference, instruction, callerMethod, context, instructionNode)
     if (method != null) {
       context.apiUsageProcessors.forEach { it.processMethodInvocation(methodReference, method, instructionNode, callerMethod, context) }
     }

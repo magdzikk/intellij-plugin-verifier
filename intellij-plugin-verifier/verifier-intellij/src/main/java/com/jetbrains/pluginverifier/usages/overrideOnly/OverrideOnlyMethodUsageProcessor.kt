@@ -10,7 +10,7 @@ import com.jetbrains.pluginverifier.results.reference.MethodReference
 import com.jetbrains.pluginverifier.usages.FilteringApiUsageProcessor
 import com.jetbrains.pluginverifier.usages.annotation.AnnotationResolver
 import com.jetbrains.pluginverifier.usages.annotation.isMemberEffectivelyAnnotatedWith
-import com.jetbrains.pluginverifier.usages.util.KotlinInlinedCodeDetector
+import com.jetbrains.pluginverifier.usages.util.isInlinedFromOutsidePlugin
 import com.jetbrains.pluginverifier.verifiers.VerificationContext
 import com.jetbrains.pluginverifier.verifiers.filter.CompositeApiUsageFilter
 import com.jetbrains.pluginverifier.verifiers.filter.SameModuleUsageFilter
@@ -19,6 +19,7 @@ import com.jetbrains.pluginverifier.verifiers.resolution.ClassFile
 import com.jetbrains.pluginverifier.verifiers.resolution.ClassFileMember
 import com.jetbrains.pluginverifier.verifiers.resolution.ClassUsageType
 import com.jetbrains.pluginverifier.verifiers.resolution.Field
+import com.jetbrains.pluginverifier.verifiers.resolution.KotlinInlinedCodeDetector
 import com.jetbrains.pluginverifier.verifiers.resolution.Method
 import com.jetbrains.pluginverifier.verifiers.resolution.searchParentOverrides
 import org.objectweb.asm.tree.AbstractInsnNode
