@@ -10,6 +10,7 @@ import com.jetbrains.pluginverifier.results.reference.MethodReference
 import com.jetbrains.pluginverifier.verifiers.VerificationContext
 import com.jetbrains.pluginverifier.verifiers.hierarchy.ClassHierarchyBuilder
 import com.jetbrains.pluginverifier.verifiers.isSubclassOf
+import org.objectweb.asm.tree.AbstractInsnNode
 import java.util.*
 
 /**
@@ -23,7 +24,8 @@ class MethodResolver {
     methodReference: MethodReference,
     instruction: Instruction,
     callerMethod: Method,
-    context: VerificationContext
+    context: VerificationContext,
+    instructionNode: AbstractInsnNode? = null
   ): Method? =
     when (val resolutionResult = MethodResolveImpl(methodReference, instruction, callerMethod, context).resolveMethod(ownerClass)) {
       MethodResolutionResult.Abort -> null
@@ -32,7 +34,7 @@ class MethodResolver {
         null
       }
       is MethodResolutionResult.Found -> {
-        checkMethodIsAccessible(resolutionResult.method, context, methodReference, callerMethod, instruction)
+        checkMethodIsAccessible(resolutionResult.method, context, methodReference, callerMethod, instruction, instructionNode)
         resolutionResult.method
       }
     }
@@ -84,9 +86,10 @@ class MethodResolver {
     context: VerificationContext,
     methodReference: MethodReference,
     callerMethod: Method,
-    instruction: Instruction
+    instruction: Instruction,
+    instructionNode: AbstractInsnNode?
   ) {
-    val accessProblem = detectAccessProblem(resolvedMethod, callerMethod, context)
+    val accessProblem = detectAccessProblem(resolvedMethod, callerMethod, context, instructionNode)
     if (accessProblem != null) {
       context.problemRegistrar.registerProblem(
         IllegalMethodAccessProblem(

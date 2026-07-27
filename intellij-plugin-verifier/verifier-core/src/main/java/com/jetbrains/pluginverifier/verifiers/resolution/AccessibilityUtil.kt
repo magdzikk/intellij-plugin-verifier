@@ -7,6 +7,7 @@ package com.jetbrains.pluginverifier.verifiers.resolution
 import com.jetbrains.pluginverifier.results.access.AccessType
 import com.jetbrains.pluginverifier.verifiers.VerificationContext
 import com.jetbrains.pluginverifier.verifiers.isSubclassOf
+import org.objectweb.asm.tree.AbstractInsnNode
 
 fun isClassAccessibleToOtherClass(me: ClassFile, other: ClassFile): Boolean =
   me.isPublic
@@ -22,13 +23,22 @@ fun isClassAccessibleToOtherClass(me: ClassFile, other: ClassFile): Boolean =
 private fun isKotlinDefaultConstructorMarker(classFile: ClassFile): Boolean =
   classFile.name == "kotlin/jvm/internal/DefaultConstructorMarker"
 
-fun detectAccessProblem(callee: ClassFileMember, caller: ClassFileMember, context: VerificationContext): AccessType? {
+fun detectAccessProblem(
+  callee: ClassFileMember,
+  caller: ClassFileMember,
+  context: VerificationContext,
+  instructionNode: AbstractInsnNode? = null
+): AccessType? {
   when {
     callee.isPrivate -> {
       if (callee is Method || callee is Field) {
         val callerClass = if (caller is ClassFile) caller else caller.containingClassFile
         val calleeClass = callee.containingClassFile
-        return if (doClassesBelongToTheSameNestHost(callerClass, calleeClass, context)) {
+        if (doClassesBelongToTheSameNestHost(callerClass, calleeClass, context)) {
+          return null
+        }
+        val inlineOriginClass = resolveInlineOriginClass(caller, instructionNode, context)
+        return if (inlineOriginBelongsToCalleeNest(inlineOriginClass, calleeClass, context)) {
           null
         } else {
           AccessType.PRIVATE
@@ -50,6 +60,21 @@ fun detectAccessProblem(callee: ClassFileMember, caller: ClassFileMember, contex
       }
   }
   return null
+}
+
+private fun inlineOriginBelongsToCalleeNest(inlineOriginClass: ClassFile?, calleeClass: ClassFile, context: VerificationContext): Boolean =
+  inlineOriginClass != null && doClassesBelongToTheSameNestHost(inlineOriginClass, calleeClass, context)
+
+// A private inline fun's own accesses are copied into the caller's bytecode; accessibility must be
+// checked against where they were actually declared (MP-4829: https://youtrack.jetbrains.com/issue/MP-4829).
+private fun resolveInlineOriginClass(
+  caller: ClassFileMember,
+  instructionNode: AbstractInsnNode?,
+  context: VerificationContext
+): ClassFile? {
+  val callerMethod = caller as? Method ?: return null
+  instructionNode ?: return null
+  return KotlinInlinedCodeDetector().resolveInlineOrigin(instructionNode, callerMethod, context)
 }
 
 private fun getClassNestHost(classFile: ClassFile, context: VerificationContext): ClassFile? {

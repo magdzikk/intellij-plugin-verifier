@@ -14,13 +14,15 @@ import com.jetbrains.pluginverifier.verifiers.resolution.ClassFile
 import com.jetbrains.pluginverifier.verifiers.resolution.Field
 import com.jetbrains.pluginverifier.verifiers.resolution.FieldResolver
 import com.jetbrains.pluginverifier.verifiers.resolution.Method
+import org.objectweb.asm.tree.AbstractInsnNode
 
 class FieldAccessInstructionVerifier(
   private val callerMethod: Method,
   private val fieldOwnerClass: ClassFile,
   private val fieldReference: FieldReference,
   private val context: VerificationContext,
-  private val instruction: Instruction
+  private val instruction: Instruction,
+  private val instructionNode: AbstractInsnNode
 ) {
 
   fun verify() {
@@ -94,7 +96,7 @@ class FieldAccessInstructionVerifier(
   }
 
   private fun resolveField(): Field? {
-    val field = FieldResolver().resolveField(fieldOwnerClass, fieldReference, context, callerMethod, instruction)
+    val field = FieldResolver().resolveField(fieldOwnerClass, fieldReference, context, callerMethod, instruction, instructionNode)
     if (field != null) {
       context.apiUsageProcessors.forEach { it.processFieldAccess(fieldReference, field, context, callerMethod) }
     }

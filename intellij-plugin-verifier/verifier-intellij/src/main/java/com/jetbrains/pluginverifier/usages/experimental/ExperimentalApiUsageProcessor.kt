@@ -10,12 +10,13 @@ import com.jetbrains.pluginverifier.results.reference.FieldReference
 import com.jetbrains.pluginverifier.results.reference.MethodReference
 import com.jetbrains.pluginverifier.usages.FilteringApiUsageProcessor
 import com.jetbrains.pluginverifier.usages.SamePluginUsageFilter
-import com.jetbrains.pluginverifier.usages.util.KotlinInlinedCodeDetector
+import com.jetbrains.pluginverifier.usages.util.isInlinedFromOutsidePlugin
 import com.jetbrains.pluginverifier.verifiers.VerificationContext
 import com.jetbrains.pluginverifier.verifiers.resolution.ClassFile
 import com.jetbrains.pluginverifier.verifiers.resolution.ClassFileMember
 import com.jetbrains.pluginverifier.verifiers.resolution.ClassUsageType
 import com.jetbrains.pluginverifier.verifiers.resolution.Field
+import com.jetbrains.pluginverifier.verifiers.resolution.KotlinInlinedCodeDetector
 import com.jetbrains.pluginverifier.verifiers.resolution.Method
 import org.objectweb.asm.tree.AbstractInsnNode
 
